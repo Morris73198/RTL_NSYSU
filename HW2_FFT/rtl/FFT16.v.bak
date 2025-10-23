@@ -1,0 +1,60 @@
+// FFT16.v - FFT16 核心模組
+module FFT16(reset, clk, en, Bus_in, Bus_out);
+    input reset, clk, en;
+    input [16*32-1:0] Bus_in;
+    output [16*32-1:0] Bus_out;
+    
+    wire [8*32-1:0] W1, W2, W3, W4;
+    wire [16*32-1:0] BS1_out, BS2_out, BS3_out, BS4_out;
+    
+    // Stage 1: W16^(k×1), k=0~7
+    assign W1 = {
+        32'hFC4EFE78,  // W16^7
+        32'hFD2CFD4C,  // W16^6
+        32'hFE78FC4E,  // W16^5
+        32'h0000FC00,  // W16^4
+        32'h0188FC4E,  // W16^3
+        32'h02D4FD4C,  // W16^2
+        32'h03B2FE78,  // W16^1
+        32'h04000000   // W16^0
+    };
+    
+    // Stage 2: W16^(k×2), k=0~3
+    assign W2 = {
+        32'hFD2CFD4C,  // W16^6
+        32'h0000FC00,  // W16^4
+        32'h02D4FD4C,  // W16^2
+        32'h04000000,  // W16^0
+        32'hFD2CFD4C,  // W16^6
+        32'h0000FC00,  // W16^4
+        32'h02D4FD4C,  // W16^2
+        32'h04000000   // W16^0
+    };
+    
+    // Stage 3: W16^(k×4), k=0~1
+    assign W3 = {
+        32'h0000FC00,  // W16^4
+        32'h04000000,  // W16^0
+        32'h0000FC00,  // W16^4
+        32'h04000000,  // W16^0
+        32'h0000FC00,  // W16^4
+        32'h04000000,  // W16^0
+        32'h0000FC00,  // W16^4
+        32'h04000000   // W16^0
+    };
+    
+    // Stage 4: W16^0
+    assign W4 = {
+        32'h04000000, 32'h04000000,
+        32'h04000000, 32'h04000000,
+        32'h04000000, 32'h04000000,
+        32'h04000000, 32'h04000000
+    };
+    
+    Stag1 SU0(reset, clk, en, Bus_in,   W1, BS1_out);
+    Stag2 SU1(reset, clk, en, BS1_out,  W2, BS2_out);
+    Stag3 SU2(reset, clk, en, BS2_out,  W3, BS3_out);
+    Stag4 SU3(reset, clk, en, BS3_out,  W4, BS4_out);
+    
+    assign Bus_out = BS4_out;
+endmodule

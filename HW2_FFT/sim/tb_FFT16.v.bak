@@ -1,0 +1,84 @@
+// ============================================
+// FFT16 測試平台 (tb_FFT16.v)
+// ============================================
+`timescale 1ns/1ps
+
+module tb_FFT16;
+    reg reset, clk;
+    reg [31:0] Din;
+    wire le;
+    wire [31:0] D_out;
+    wire [4:0] count;
+
+    // 實例化待測模組 (DUT: Design Under Test)
+    FFT16_RTL U_DUT(
+        .reset(reset),
+        .clk(clk),
+        .Din(Din),
+        .le(le),
+        .D_out(D_out),
+        .count(count)
+    );
+
+    // 時脈產生：週期 10ns (100MHz)
+    initial clk = 0;
+    always #5 clk = ~clk;
+
+    // 測試向量與結果儲存
+    integer i;
+    reg [31:0] test_data[0:15];
+    reg [31:0] result[0:15];
+
+    initial begin
+        // VCD 波形檔案輸出 (可選)
+        $dumpfile("fft16_wave.vcd");
+        $dumpvars(0, tb_FFT16);
+
+        // 測試案例 1：脈衝信號 (x[0] = 1, x[1~15] = 0)
+        // 1+0j (Q10: 1024 + j0)
+        test_data[0]  = 32'h04000000;
+        for(i = 1; i < 16; i = i + 1)
+            test_data[i] = 32'h00000000;  // 0+0j
+
+        // 初始化與重置 (20ns)
+        reset = 1;
+        Din = 32'd0;
+        #20 reset = 0;
+
+        // 輸入測試資料 (16 個時脈週期)
+        for(i = 0; i < 16; i = i + 1) begin
+            @(posedge clk);
+            Din = test_data[i];
+            $display("Time=%0t Input[%0d] = %h", $time, i, Din);
+        end
+
+        // 等待 FFT 計算完成 (4個級數 + 緩衝，約 5-6 個時脈)
+        // 16 個輸入週期結束於約 180ns，等待約 50ns 讓結果穩定
+        #50; 
+
+        // 收集輸出結果 (16 個時脈週期)
+        for(i = 0; i < 16; i = i + 1) begin
+            @(posedge clk);
+            result[i] = D_out;
+            $display("Time=%0t Output[%0d] = %h", $time, i, D_out);
+        end
+
+        // 結果分析
+        $display("\n========== FFT Results ==========");
+        for(i = 0; i < 16; i = i + 1) begin
+            $display("X[%2d] = %h (Real=%d, Imag=%d)",
+                     i, result[i], 
+                     $signed(result[i][31:16]),
+                     $signed(result[i][15:0]));
+        end
+
+        #100;
+        $display("\nSimulation completed successfully!");
+        $finish;
+    end
+
+    always @(posedge le) begin
+        $display("Time=%0t FFT Enable triggered!", $time);
+    end
+
+endmodule

@@ -1,0 +1,41 @@
+// FFT16_RTL.v - 頂層模組
+module FFT16_RTL(reset, clk, Din, le, D_out, count);
+    input reset, clk;
+    input [31:0] Din;
+    output le;
+    output [31:0] D_out;
+    output reg [4:0] count;
+    
+    wire [16*32-1:0] QB, Bus_out;
+    wire [31:0] Dout[0:15];
+    reg en;
+    
+    assign le = en;
+    
+    insert_to_Queue U_Queue(reset, clk, Din, QB);
+    FFT16 U_FFT(reset, clk, en, QB, Bus_out);
+    
+    assign {Dout[15], Dout[14], Dout[13], Dout[12],
+            Dout[11], Dout[10], Dout[9],  Dout[8],
+            Dout[7],  Dout[6],  Dout[5],  Dout[4],
+            Dout[3],  Dout[2],  Dout[1],  Dout[0]} = Bus_out;
+    
+    always @(posedge clk) begin
+        if(reset) begin
+            count <= 5'd0;
+            en <= 1'b0;
+        end
+        else begin
+            if(count == 5'd15) begin
+                en <= 1'b1;
+                count <= 5'd0;
+            end
+            else begin
+                count <= count + 1;
+                en <= 1'b0;
+            end
+        end
+    end
+    
+    assign D_out = Dout[count];
+endmodule
